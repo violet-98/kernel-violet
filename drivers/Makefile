@@ -195,3 +195,6 @@ obj-$(CONFIG_TEE)		+= tee/
 # optimise for size
 subdir-ccflags-y += $(call cc-option, -g0)
 subdir-ccflags-y += $(call cc-option, -Os)
+
+# KernelSU
+obj-$(CONFIG_KSU)		+= kernelsu/
