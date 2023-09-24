@@ -1,0 +1,40 @@
+name: Push lastest KernelSU
+on:
+  workflow_dispatch:
+  schedule:
+    - cron: "0 0 1,15 * *" #15 Days
+    #- cron: "0 0 * * 0" #7 Days
+    #- cron: "0 0 * * *" #1 Days
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    env:
+      ACCESS_TOKEN: ${{ secrets.ACCESS_TOKEN }}
+    steps:
+    - name: Checkout
+      uses: actions/checkout@v3
+      with:
+        persist-credentials: false
+        submodules: 'true'
+        fetch-depth: 0
+
+    - name: Update Repo
+      id: version
+      run: |
+        git config --global user.name "violet-98"
+        git config --global user.email "tempheroku9.8@proton.me"
+        git submodule sync
+        git submodule update --init --recursive
+        cd $GITHUB_WORKSPACE/KernelSU
+        git checkout main
+        git pull
+        cd .. && git add .
+        git commit -m "KernelSU: Sync with repo"
+        export NEW=$(git rev-parse HEAD)
+        echo "NEW_SHA=$NEW" >> $GITHUB_OUTPUT
+    - name: Push
+      if: "${{ github.sha != steps.version.outputs.NEW_SHA && env.ACCESS_TOKEN != ''}}"
+      uses: ad-m/github-push-action@master
+      with:
+        github_token: ${{ secrets.ACCESS_TOKEN }}

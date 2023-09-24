@@ -1,0 +1,33 @@
+version: 2.1
+
+jobs:
+  build: # name of your job
+    machine: # executor type
+      image: ubuntu-2004:202010-01 # # recommended linux image - includes Ubuntu 20.04, docker 19.03.13, docker-compose 1.27.4
+    steps:
+      - restore_cache:
+          keys:
+            - build-cache-{{ .Branch }}-{{ checksum "build.sh" }}
+
+      - run:
+          name: Install packages
+          command: |
+            sudo apt-get update
+            curl https://raw.githubusercontent.com/akhilnarang/scripts/master/setup/android_build_env.sh | bash
+            sudo apt-get -y install wget zip lld ccache make mkisofs git python bc cpio
+            sudo apt-get -y install openjdk-11-jre-headless
+
+      - run:
+          name: Build kernel
+          command: |
+            git clone --depth=1 -b "$CIRCLE_BRANCH" "$CIRCLE_REPOSITORY_URL" violet
+            cd violet
+            bash build.sh
+
+      - save_cache:
+          paths:
+            - /home/circleci/violet
+          key: build-cache-{{ .Branch }}-{{ checksum "build.sh" }}
+
+    # The resource_class feature allows configuring CPU and RAM resources for each job. Different resource classes are available for different executors. https://circleci.com/docs/2.0/configuration-reference/#resourceclass
+    resource_class: large
