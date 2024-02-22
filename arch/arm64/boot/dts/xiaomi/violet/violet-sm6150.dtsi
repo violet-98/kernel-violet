@@ -1,0 +1,113 @@
+/*
+ * Copyright (C) 2021 The LineageOS Project
+ *
+ * this file is for attribution only of violet
+ * And public attribution of Xiaomi platforms (like F7B and so)
+ */
+
+#include "violet-sm6150-audio.dtsi"
+#include "violet-sm6150-battery.dtsi"
+#include "violet-sm6150-camera.dtsi"
+#include "violet-sm6150-display.dtsi"
+#include "violet-sm6150-fingerprint.dtsi"
+#include "violet-sm6150-ir.dtsi"
+#include "violet-sm6150-memory.dtsi"
+#include "violet-sm6150-pinctrl.dtsi"
+#include "violet-sm6150-pm6150.dtsi"
+#include "violet-sm6150-pm6150l.dtsi"
+#include "violet-sm6150-regulator.dtsi"
+#include "violet-sm6150-thermal.dtsi"
+#include "violet-sm6150-touchscreen.dtsi"
+#include "violet-sm6150-usb.dtsi"
+
+&firmware {
+    android {
+        vbmeta {
+            parts = "vbmeta,boot,recovery,system,vendor,dtbo";
+        };
+        fstab {
+            vendor {
+		dev = "/dev/block/platform/soc/7c4000.sdhci/by-name/vendor";
+                fsmgr_flags = "wait";
+            };
+            persist {
+		compatible = "android,persist";
+		dev = "/dev/block/platform/soc/7c4000.sdhci/by-name/persist";
+		type = "ext4";
+		mnt_point = "/mnt/vendor/persist";
+		mnt_flags = "nosuid,nodev,noatime,barrier=1";
+		fsmgr_flags = "wait";
+		status = "ok";
+	    };
+
+        };
+    };
+};
+
+&wdog {
+    qcom,bark-time = <15000>;
+};
+
+&sdhc_2 {
+    cd-gpios = <&tlmm 99 0>;
+};
+
+&clock_cpucc {
+    qcom,cpufreq-table-0 =
+		<1363200>,
+		<1593600>,
+		<1708800>;
+
+    qcom,cpufreq-table-6 =
+		< 652800>,
+		< 768800>,
+		<1017600>,
+		<1209600>,
+		<1363200>,
+		<1708800>,
+		<2016000>;
+};
+
+/* Simple Thermal */
+&soc {
+	qcom,msm-thermal-simple {
+		compatible = "qcom,msm-thermal-simple";
+		qcom,poll-ms = <3000>;
+		qcom,start-delay = <5>;
+
+		zone@0 {
+			reg = <0>;
+			qcom,silver-khz = <1708800>;
+			qcom,gold-khz = <1708800>;
+			qcom,trip-deg = <65000>;
+		};
+
+		zone@1 {
+			reg = <1>;
+			qcom,silver-khz = <1593600>;
+			qcom,gold-khz = <1708800>;
+			qcom,trip-deg = <70000>;
+		};
+
+		zone@2 {
+			reg = <2>;
+			qcom,silver-khz = <1593600>;
+			qcom,gold-khz = <1363200>;
+			qcom,trip-deg = <73500>;
+		};
+
+		zone@3 {
+			reg = <3>;
+			qcom,silver-khz = <1363200>;
+			qcom,gold-khz = <1209600>;
+			qcom,trip-deg = <76500>;
+		};
+
+		zone@4 {
+			reg = <4>;
+			qcom,silver-khz = <1363200>;
+			qcom,gold-khz = <1017600>;
+			qcom,trip-deg = <85500>;
+		};
+	};
+};
