@@ -25,10 +25,6 @@
 #include "step-chg-jeita.h"
 #include "storm-watch.h"
 
-#ifdef CONFIG_FORCE_FAST_CHARGE
-#include <linux/fastchg.h>
-#endif
-
 #define smblib_err(chg, fmt, ...)		\
 	pr_err("%s: %s: " fmt, chg->name,	\
 		__func__, ##__VA_ARGS__)	\
@@ -876,13 +872,6 @@ static int set_sdp_current(struct smb_charger *chg, int icl_ua)
 	int rc;
 	u8 icl_options;
 	const struct apsd_result *apsd_result = smblib_get_apsd_result(chg);
-
-#ifdef CONFIG_FORCE_FAST_CHARGE
-	if (force_fast_charge > 0 && icl_ua == USBIN_500MA)
-	{
-		icl_ua = USBIN_900MA;
-	}
-#endif
 
 	/* power source is SDP */
 	switch (icl_ua) {
@@ -3689,7 +3678,7 @@ void smblib_usb_plugin_locked(struct smb_charger *chg)
 
 		/* Schedule work to enable parallel charger */
 		vote(chg->awake_votable, PL_DELAY_VOTER, true, 0);
-		queue_delayed_work(system_power_efficient_wq, &chg->pl_enable_work,
+		schedule_delayed_work(&chg->pl_enable_work,
 					msecs_to_jiffies(PL_DELAY_MS));
 		/* vbus rising when APSD was disabled and PD_ACTIVE = 0 */
 		if (get_effective_result(chg->apsd_disable_votable) &&
@@ -3771,7 +3760,7 @@ irqreturn_t smblib_handle_icl_change(int irq, void *data)
 			delay = 0;
 
 		cancel_delayed_work_sync(&chg->icl_change_work);
-		queue_delayed_work(system_power_efficient_wq, &chg->icl_change_work,
+		schedule_delayed_work(&chg->icl_change_work,
 						msecs_to_jiffies(delay));
 	}
 
@@ -4081,7 +4070,7 @@ static void smblib_handle_apsd_done(struct smb_charger *chg, bool rising)
 		break;
 	case DCP_CHARGER_BIT:
 		if (chg->wa_flags & QC_CHARGER_DETECTION_WA_BIT)
-			queue_delayed_work(system_power_efficient_wq, &chg->hvdcp_detect_work,
+			schedule_delayed_work(&chg->hvdcp_detect_work,
 					      msecs_to_jiffies(HVDCP_DET_MS));
 		break;
 	default:
@@ -4654,7 +4643,7 @@ irqreturn_t smblib_handle_usb_typec_change(int irq, void *data)
 		cancel_delayed_work_sync(&chg->uusb_otg_work);
 		vote(chg->awake_votable, OTG_DELAY_VOTER, true, 0);
 		smblib_dbg(chg, PR_INTERRUPT, "Scheduling OTG work\n");
-		queue_delayed_work(system_power_efficient_wq, &chg->uusb_otg_work,
+		schedule_delayed_work(&chg->uusb_otg_work,
 				msecs_to_jiffies(chg->otg_delay_ms));
 		return IRQ_HANDLED;
 	}
@@ -4702,7 +4691,7 @@ irqreturn_t smblib_handle_high_duty_cycle(int irq, void *data)
 	if (chg->irq_info[HIGH_DUTY_CYCLE_IRQ].irq)
 		disable_irq_nosync(chg->irq_info[HIGH_DUTY_CYCLE_IRQ].irq);
 
-	queue_delayed_work(system_power_efficient_wq, &chg->clear_hdc_work, msecs_to_jiffies(60));
+	schedule_delayed_work(&chg->clear_hdc_work, msecs_to_jiffies(60));
 
 	return IRQ_HANDLED;
 }
@@ -4768,7 +4757,7 @@ irqreturn_t smblib_handle_switcher_power_ok(int irq, void *data)
 			 * permanently suspending the input if the boost-back
 			 * condition is unintentionally hit.
 			 */
-			queue_delayed_work(system_power_efficient_wq, &chg->bb_removal_work,
+			schedule_delayed_work(&chg->bb_removal_work,
 				msecs_to_jiffies(BOOST_BACK_UNVOTE_DELAY_MS));
 		}
 	}
@@ -5009,7 +4998,7 @@ static void smblib_otg_oc_work(struct work_struct *work)
 	 * triggered then it is likely that the software based soft start was
 	 * successful and the VBUS < 1V restriction should be re-enabled.
 	 */
-	queue_delayed_work(system_power_efficient_wq, &chg->otg_ss_done_work, msecs_to_jiffies(500));
+	schedule_delayed_work(&chg->otg_ss_done_work, msecs_to_jiffies(500));
 
 	rc = _smblib_vbus_regulator_disable(chg->vbus_vreg->rdev);
 	if (rc < 0) {

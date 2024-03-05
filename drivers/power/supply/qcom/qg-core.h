@@ -16,11 +16,6 @@
 #include "fg-alg.h"
 #include "qg-defs.h"
 
-struct qg_saved_data {
-	union power_supply_propval val;
-	unsigned long last_req_expires;
-};
-
 struct qg_batt_props {
 	const char		*batt_type_str;
 	int			float_volt_uv;
@@ -208,7 +203,6 @@ struct qpnp_qg {
 	struct cycle_counter	*counter;
 	/* ttf */
 	struct ttf		*ttf;
-	struct qg_saved_data saved_data[POWER_SUPPLY_PROP_MAX];
 };
 
 struct ocv_all {
