@@ -1,0 +1,119 @@
+diff --git a/arch/arm64/boot/dts/xiaomi/violet/violet-sm6150.dtsi b/arch/arm64/boot/dts/xiaomi/violet/violet-sm6150.dtsi
+index 15a33860f..36e2e5dc6 100644
+--- a/arch/arm64/boot/dts/xiaomi/violet/violet-sm6150.dtsi
++++ b/arch/arm64/boot/dts/xiaomi/violet/violet-sm6150.dtsi
+@@ -22,12 +22,13 @@
+ 
+ &firmware {
+     android {
++        boot_devices = "soc/7c4000.sdhci";
+         vbmeta {
+             parts = "vbmeta,boot,recovery,system,vendor,dtbo";
+         };
+         fstab {
+             vendor {
+-                fsmgr_flags = "wait";
++                status = "disabled";
+             };
+         };
+     };
+diff --git a/arch/arm64/configs/vendor/violet-perf_defconfig b/arch/arm64/configs/vendor/violet-perf_defconfig
+index 98a16f2ac..e36630ea5 100644
+--- a/arch/arm64/configs/vendor/violet-perf_defconfig
++++ b/arch/arm64/configs/vendor/violet-perf_defconfig
+@@ -171,6 +171,7 @@ CONFIG_DEFAULT_USE_ENERGY_AWARE=y
+ # CONFIG_RELAY is not set
+ CONFIG_BLK_DEV_INITRD=y
+ CONFIG_INITRAMFS_SOURCE=""
++CONFIG_INITRAMFS_IGNORE_SKIP_FLAG=y
+ # CONFIG_INITRAMFS_FORCE is not set
+ CONFIG_RD_GZIP=y
+ CONFIG_RD_BZIP2=y
+diff --git a/fs/proc/cmdline.c b/fs/proc/cmdline.c
+index 0c8bd1641..44b64c7b3 100644
+--- a/fs/proc/cmdline.c
++++ b/fs/proc/cmdline.c
+@@ -4,12 +4,39 @@
+ #include <linux/proc_fs.h>
+ #include <linux/seq_file.h>
+ #include <asm/setup.h>
++#ifdef CONFIG_INITRAMFS_IGNORE_SKIP_FLAG
++#include <asm/setup.h>
++#endif
++
++#ifdef CONFIG_INITRAMFS_IGNORE_SKIP_FLAG
++#define INITRAMFS_STR_FIND "skip_initramf"
++#define INITRAMFS_STR_REPLACE "want_initramf"
++#define INITRAMFS_STR_LEN (sizeof(INITRAMFS_STR_FIND) - 1)
++
++static char proc_command_line[COMMAND_LINE_SIZE];
++
++static void proc_command_line_init(void) {
++	char *offset_addr;
++
++	strcpy(proc_command_line, saved_command_line);
++
++	offset_addr = strstr(proc_command_line, INITRAMFS_STR_FIND);
++	if (!offset_addr)
++		return;
++
++	memcpy(offset_addr, INITRAMFS_STR_REPLACE, INITRAMFS_STR_LEN);
++}
++#endif
+ 
+ static char proc_cmdline[COMMAND_LINE_SIZE];
+ 
+ static int cmdline_proc_show(struct seq_file *m, void *v)
+ {
++#ifdef CONFIG_INITRAMFS_IGNORE_SKIP_FLAG
++	seq_printf(m, "%s\n", proc_command_line);
++#else
+ 	seq_printf(m, "%s\n", proc_cmdline);
++#endif
+ 	return 0;
+ }
+ 
+@@ -27,6 +54,10 @@ static const struct file_operations cmdline_proc_fops = {
+ 
+ static int __init proc_cmdline_init(void)
+ {
++#ifdef CONFIG_INITRAMFS_IGNORE_SKIP_FLAG
++	proc_command_line_init();
++#endif
++
+ 	/* SafetyNet bypass: show androidboot.verifiedbootstate=green */
+ 	char *a1, *a2;
+ 
+diff --git a/init/initramfs.c b/init/initramfs.c
+index 5ea7f1b5e..c239ddc9f 100644
+--- a/init/initramfs.c
++++ b/init/initramfs.c
+@@ -614,7 +614,7 @@ static int __init skip_initramfs_param(char *str)
+ {
+ 	if (*str)
+ 		return 0;
+-	do_skip_initramfs = 1;
++	do_skip_initramfs = !IS_ENABLED(CONFIG_INITRAMFS_IGNORE_SKIP_FLAG);
+ 	return 1;
+ }
+ __setup("skip_initramfs", skip_initramfs_param);
+diff --git a/usr/Kconfig b/usr/Kconfig
+index 8b4826de1..e57ebaace 100644
+--- a/usr/Kconfig
++++ b/usr/Kconfig
+@@ -32,6 +32,15 @@ config INITRAMFS_FORCE
+ 	  and is useful if you cannot or don't want to change the image
+ 	  your bootloader passes to the kernel.
+ 
++config INITRAMFS_IGNORE_SKIP_FLAG
++	bool "Force initramfs even when skip_initramfs is set"
++	default n
++	help
++	  Ignore skip_initramfs cmdline flag.
++	  This should only be used if you have no control over cmdline
++	  passed by your bootloader yet you can't use CMDLINE_FORCE.
++	  If unsure say N.
++
+ config INITRAMFS_ROOT_UID
+ 	int "User ID to map to 0 (user root)"
+ 	depends on INITRAMFS_SOURCE!=""
